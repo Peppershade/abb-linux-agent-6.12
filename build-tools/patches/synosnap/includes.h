@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+/*
+ * Copyright (C) 2015-2023 Datto Inc.
+ */
+
+#ifndef DATTOBD_INCLUDES_H_
+#define DATTOBD_INCLUDES_H_
+
+#include <asm/div64.h>
+#include <linux/blkdev.h>
+#include <linux/blk-mq.h>
+#include <linux/buffer_head.h>
+#include <linux/ftrace.h>
+#include <linux/kthread.h>
+#include <linux/miscdevice.h>
+#include <linux/module.h>
+#include <linux/version.h>
+#include <linux/moduleparam.h>
+#include <linux/mount.h>
+#include <linux/namei.h>
+#include <linux/proc_fs.h>
+#include <linux/random.h>
+#include <linux/seq_file.h>
+#include <linux/unistd.h>
+#include <linux/vmalloc.h>
+#include <linux/file.h>
+
+// kernel 6.12: struct fd no longer has .file member, use fd_file() accessor
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,12,0)
+// fd_file() is already provided by the kernel
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6,10,0)
+// fd_file() was introduced in 6.10 but struct fd still had .file
+#else
+// Pre-6.10: no fd_file() helper, access .file directly
+#define fd_file(f) ((f).file)
+#endif
+
+#endif

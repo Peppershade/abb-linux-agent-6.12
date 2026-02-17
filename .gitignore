@@ -1,0 +1,23 @@
+# Build output
+*.run
+*.deb
+*.zip
+
+# Extracted installer directories
+Synology Active Backup*/
+
+# Temp / working files
+*.log
+*.tmp
+/tmp/
+
+# Editor / OS files
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Claude working files
+.claude/
+continue.md
+result.md
