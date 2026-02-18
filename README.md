@@ -127,6 +127,10 @@ Use at your own risk.
 **Tested and verified working** on Debian `6.12.69+deb13-amd64`. Other kernel
 6.12+ versions may work but have not been explicitly tested.
 
+## Contributors
+
+- [Árpád Szász](https://github.com/arpadszasz) — TEMP_DIR support, extraction fix, DKMS autoinstall fix
+
 ## License
 
 The patched source files are derived from Synology's original `synosnap` module
