@@ -41,8 +41,31 @@
 static asmlinkage long (*orig_move_mount)(struct pt_regs *regs);
 static asmlinkage long (*orig_mount_setattr)(struct pt_regs *regs);
 static asmlinkage long (*orig_fsconfig)(struct pt_regs *regs);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,12,0)
-// kernel >= 6.12: major mnt_namespace restructure
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,15,0)
+// kernel >= 6.15: mnt_namespace simplified (removed mnt_ns_tree_node, mnt_ns_list, ns_lock)
+struct mnt_namespace {
+	struct ns_common	ns;
+	struct mount *		root;
+	struct {
+		struct rb_root		mounts;		/* Protected by namespace_sem */
+		struct rb_node		*mnt_last_node;
+		struct rb_node		*mnt_first_node;
+	};
+	struct user_namespace	*user_ns;
+	struct ucounts		*ucounts;
+	wait_queue_head_t	poll;
+	u64			seq_origin;	/* Sequence number of origin mount namespace */
+	u64			event;
+#ifdef CONFIG_FSNOTIFY
+	__u32			n_fsnotify_mask;
+	struct fsnotify_mark_connector __rcu *n_fsnotify_marks;
+#endif
+	unsigned int		nr_mounts; /* # of mounts in the namespace */
+	unsigned int		pending_mounts;
+	refcount_t		passive;
+} __randomize_layout;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6,12,0)
+// kernel 6.12-6.14: major mnt_namespace restructure
 struct mnt_namespace {
 	struct ns_common	ns;
 	struct mount *		root;
@@ -86,6 +109,58 @@ struct mnt_namespace {
 } __randomize_layout;
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,15,0)
+// kernel >= 6.15: struct mount restructured (mnt_instance removed, mnt_next_for_sb added, etc.)
+struct mount {
+	struct hlist_node mnt_hash;
+	struct mount *mnt_parent;
+	struct dentry *mnt_mountpoint;
+	struct vfsmount mnt;
+	union {
+		struct rb_node mnt_node;	/* node in the ns->mounts rbtree */
+		struct rcu_head mnt_rcu;
+		struct llist_node mnt_llist;
+	};
+#ifdef CONFIG_SMP
+	struct mnt_pcp __percpu *mnt_pcp;
+#else
+	int mnt_count;
+	int mnt_writers;
+#endif
+	struct list_head mnt_mounts;	/* list of children, anchored here */
+	struct list_head mnt_child;	/* and going through their mnt_child */
+	struct mount *mnt_next_for_sb;
+	struct mount * __aligned(1) *mnt_pprev_for_sb;
+	const char *mnt_devname;	/* Name of device e.g. /dev/dsk/hda1 */
+	struct list_head mnt_list;
+	struct list_head mnt_expire;	/* link in fs-specific expiry list */
+	struct list_head mnt_share;	/* circular list of shared mounts */
+	struct hlist_head mnt_slave_list;/* list of slave mounts */
+	struct hlist_node mnt_slave;	/* slave list entry */
+	struct mount *mnt_master;	/* slave is on master->mnt_slave_list */
+	struct mnt_namespace *mnt_ns;	/* containing namespace */
+	struct mountpoint *mnt_mp;	/* where is it mounted */
+	union {
+		struct hlist_node mnt_mp_list;	/* list mounts with the same mountpoint */
+		struct hlist_node mnt_umount;
+	};
+#ifdef CONFIG_FSNOTIFY
+	struct fsnotify_mark_connector __rcu *mnt_fsnotify_marks;
+	__u32 mnt_fsnotify_mask;
+	struct list_head to_notify;
+	struct mnt_namespace *prev_ns;
+#endif
+	int mnt_t_flags;		/* namespace_sem-protected flags */
+	int mnt_id;			/* mount identifier, reused */
+	u64 mnt_id_unique;		/* mount ID unique until reboot */
+	int mnt_group_id;		/* peer group identifier */
+	int mnt_expiry_mark;		/* true if marked for expiry */
+	struct hlist_head mnt_pins;
+	struct hlist_head mnt_stuck_children;
+	struct mount *overmount;
+} __randomize_layout;
+#else
+// kernel < 6.15
 struct mount {
 	struct hlist_node mnt_hash;
 	struct mount *mnt_parent;
@@ -137,6 +212,7 @@ struct mount {
 	struct hlist_head mnt_pins;
 	struct hlist_head mnt_stuck_children;
 } __randomize_layout;
+#endif
 
 #else
 static asmlinkage long (*orig_mount)(struct pt_regs *regs);

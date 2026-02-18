@@ -36,4 +36,12 @@
 #define fd_file(f) ((f).file)
 #endif
 
+// kernel 6.17+: BIO_THROTTLED renamed to BIO_QOS_THROTTLED
+// Provide a compat define so unpatched code using BIO_THROTTLED still compiles.
+#ifdef HAVE_BIO_QOS_THROTTLED
+#ifndef BIO_THROTTLED
+#define BIO_THROTTLED BIO_QOS_THROTTLED
+#endif
+#endif
+
 #endif

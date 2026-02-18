@@ -1,11 +1,11 @@
 > **WARNING:** This project is **not affiliated with, endorsed by, or supported by Synology Inc.**
-> No support is provided — use at your own risk. Tested on `6.12.69+deb13-amd64` only.
+> No support is provided — use at your own risk.
 
-# Synology Active Backup for Business Agent - Kernel 6.12 Patches
+# Synology Active Backup for Business Agent - Kernel 6.12–6.18 Patches
 
-Patches and build tooling to add **Linux kernel 6.12+** support to the
+Patches and build tooling to add **Linux kernel 6.12–6.18** support to the
 [Synology Active Backup for Business](https://www.synology.com/en-global/dsm/feature/active_backup_business)
-Linux agent (version 3.1.0-4968, based on the official 3.1.0-4967 release).
+Linux agent (version 3.1.0-4969, based on the official 3.1.0-4967 release).
 
 The official agent ships a DKMS kernel module (`synosnap`) that fails to build
 on kernel 6.12 and later due to upstream API changes. This project provides
@@ -15,8 +15,9 @@ with the fixes applied.
 ## What is patched
 
 The `synosnap` kernel module source (`/usr/src/synosnap-0.11.6/`) is updated
-to handle the following kernel 6.12 API changes:
+to handle kernel API changes from **6.12 through 6.18**:
 
+### Kernel 6.12
 - `bdev_file_open_by_path()` replaces `bdev_open_by_path()` (new feature test)
 - `bdev_freeze()` / `bdev_thaw()` replace `freeze_bdev()` / `thaw_bdev()`
 - `BLK_STS_NEXUS` removal — `bdev_test_flag()` feature test added
@@ -26,7 +27,21 @@ to handle the following kernel 6.12 API changes:
 - Various other compile fixes across `blkdev.c`, `tracer.c`,
   `bdev_state_handler.c`, `ioctl_handlers.c`, and `system_call_hooking.c`
 
-The agent DEB is also repackaged with the version bumped to `3.1.0-4968` so
+### Kernel 6.15+
+- `struct mnt_namespace` layout changes (`seq` → `seq_origin`, `mounts` wrapped
+  in anonymous struct, `mnt_ns_tree_node`/`mnt_ns_list`/`ns_lock` removed,
+  fsnotify fields added)
+- `struct mount` layout changes (`mnt_instance` removed, `mnt_node` in top union,
+  slave lists changed from `list_head` to `hlist_head`, new fields `mnt_t_flags`,
+  `mnt_id_unique`, `overmount`)
+
+### Kernel 6.17+
+- `BIO_THROTTLED` renamed to `BIO_QOS_THROTTLED` — compat define added
+- `submit_bio()` / `submit_bio_noacct()` return type changed to `void` —
+  `mrf.c` patched with conditional return handling
+- New feature tests: `bio_qos_throttled.c`, `submit_bio_noacct_void.c`
+
+The agent DEB is also repackaged with the version bumped to `3.1.0-4969` so
 the NAS recognizes it as the patched build.
 
 ## Prerequisites
@@ -124,8 +139,11 @@ the Active Backup for Business Agent.
 through issues, but there are no guarantees of response time or resolution.
 Use at your own risk.
 
-**Tested and verified working** on Debian `6.12.69+deb13-amd64`. Other kernel
-6.12+ versions may work but have not been explicitly tested.
+**Tested and verified working** on:
+- Debian `6.12.69+deb13-amd64`
+- Ubuntu `6.17.0-14-generic` (Ubuntu 25.10)
+
+Kernel 6.18 is supported but has not been explicitly tested yet.
 
 ## Contributors
 
