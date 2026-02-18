@@ -72,7 +72,8 @@ elif [ -f "$INPUT" ]; then
     else
         # Makeself format: offset is at a fixed line count in the header
         # Try to find the offset by looking for the payload marker
-        OFFSET=$(head -n 700 "$INPUT" | wc -c | tr -d ' ')
+        SCRIPT_END_LINE=$(grep -a -n 'eval $finish; exit $res' "$INPUT" | sed -r 's/^([0-9]+?)\:.+$/\1/')
+        OFFSET=$(head -n $SCRIPT_END_LINE "$INPUT" | wc -c | tr -d ' ')
         dd if="$INPUT" bs="$OFFSET" skip=1 2>/dev/null | gzip -cd | tar xf - -C "$EXTRACTED"
     fi
 
