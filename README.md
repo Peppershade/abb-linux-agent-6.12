@@ -142,8 +142,7 @@ Use at your own risk.
 **Tested and verified working** on:
 - Debian `6.12.69+deb13-amd64`
 - Ubuntu `6.17.0-14-generic` (Ubuntu 25.10)
-
-Kernel 6.18 is supported but has not been explicitly tested yet.
+- Ubuntu `6.18.0-061800-generic` (Ubuntu 25.10)
 
 ## Contributors
 

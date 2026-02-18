@@ -11,6 +11,7 @@ Patched build of the Synology Active Backup for Business Agent with Linux kernel
 ### Tested on
 - Debian `6.12.69+deb13-amd64`
 - Ubuntu `6.17.0-14-generic` (Ubuntu 25.10)
+- Ubuntu `6.18.0-061800-generic` (Ubuntu 25.10)
 
 ### Install
 ```bash
