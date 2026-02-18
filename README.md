@@ -4,7 +4,7 @@
 # Synology Active Backup for Business Agent — Kernel 6.12–6.18 Patches
 
 Synology has not updated the Active Backup for Business Linux agent since
-kernel 6.11. Their `synosnap` DKMS module fails to compile on 6.12 and later
+kernel 6.8. Their `synosnap` DKMS module fails to compile on 6.12 and later
 due to upstream kernel API changes — leaving users on modern distributions
 (Debian 13, Ubuntu 24.04 HWE, Ubuntu 25.04/25.10) unable to back up their
 machines. Rather than waiting indefinitely, this project patches the module
