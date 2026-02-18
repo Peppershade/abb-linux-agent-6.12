@@ -18,6 +18,7 @@ AGENT_VERSION="3.1.0-4968"
 AGENT_BUILD_TAG="4968"
 SYNOSNAP_VERSION="0.11.6"
 OUTPUT_DIR="${OUTPUT_DIR:-$(pwd)}"
+TEMP_DIR="${TEMP_DIR:-/tmp}"
 
 # Colors
 RED='\033[0;31m'
@@ -40,7 +41,7 @@ if [ $# -lt 1 ]; then
 fi
 
 INPUT="$1"
-WORKDIR=$(mktemp -d "/tmp/abb-rebuild.XXXXXX")
+WORKDIR=$(mktemp -d "$TEMP_DIR/abb-rebuild.XXXXXX")
 trap 'rm -rf "$WORKDIR"' EXIT
 
 info "Work directory: $WORKDIR"
@@ -72,7 +73,8 @@ elif [ -f "$INPUT" ]; then
     else
         # Makeself format: offset is at a fixed line count in the header
         # Try to find the offset by looking for the payload marker
-        OFFSET=$(head -n 700 "$INPUT" | wc -c | tr -d ' ')
+        SCRIPT_END_LINE=$(grep -a -n 'eval $finish; exit $res' "$INPUT" | sed -r 's/^([0-9]+?)\:.+$/\1/')
+        OFFSET=$(head -n $SCRIPT_END_LINE "$INPUT" | wc -c | tr -d ' ')
         dd if="$INPUT" bs="$OFFSET" skip=1 2>/dev/null | gzip -cd | tar xf - -C "$EXTRACTED"
     fi
 
@@ -121,6 +123,9 @@ for f in genconfig.sh includes.h blkdev.h blkdev.c snap_device.h tracer.c \
          bdev_state_handler.c ioctl_handlers.c ftrace_hooking.c system_call_hooking.c; do
     cp "$PATCHES_DIR/synosnap/$f" "$SNAP_SRC/$f"
 done
+
+info "  Reverting Debian DKMS autoinstall logic..."
+sed -i '/autoinstall/Id' "$SNAP_WORK/repack/DEBIAN/postinst"
 
 # Build the patched synosnap DEB
 PATCHED_SYNOSNAP_DEB="$WORKDIR/synosnap-${SYNOSNAP_VERSION}.deb"
