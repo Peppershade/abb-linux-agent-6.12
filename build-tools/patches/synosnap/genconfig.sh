@@ -92,11 +92,11 @@ run_one_test() {
 	local TMPDIR=$(mktemp -d)
 	ln -s "$(readlink -f "$SRC_FILE")" "$TMPDIR/$TEST.c"
 
-	# Create a per-test Kbuild file with proper tab for recipe line
-	printf 'obj-m := %s\nKERNELVERSION ?= $(shell uname -r)\nKDIR := /lib/modules/$(KERNELVERSION)/build\nEXTRA_CFLAGS := -g -Werror -I%s\ndefault:\n\t$(MAKE) -C $(KDIR) M=%s modules\nclean:\n\t$(MAKE) -C $(KDIR) M=%s clean\n' \
-		"$OBJ" "$REAL_SRC_DIR" "$TMPDIR" "$TMPDIR" > "$TMPDIR/Makefile"
+	# Create a per-test Kbuild file (use ccflags-y, not EXTRA_CFLAGS — removed in 6.17)
+	printf 'obj-m := %s\nccflags-y := -g -Werror -I%s\n' \
+		"$OBJ" "$REAL_SRC_DIR" > "$TMPDIR/Kbuild"
 
-	if make -C "$TMPDIR" KERNELVERSION=$KERNEL_VERSION &>/dev/null ; then
+	if make -C /lib/modules/$KERNEL_VERSION/build M="$TMPDIR" modules &>/dev/null ; then
 		echo "$PREFIX present"
 		echo "#define $MACRO_NAME" >> $OUTPUT_FILE
 	else

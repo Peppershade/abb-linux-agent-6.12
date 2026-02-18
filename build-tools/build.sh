@@ -1,5 +1,5 @@
 #!/bin/bash
-# build.sh - Rebuild Synology Active Backup for Business Agent with kernel 6.12 patches
+# build.sh - Rebuild Synology Active Backup for Business Agent with kernel 6.12-6.18 patches
 #
 # Usage:
 #   ./build.sh /path/to/original-install.run              # from original .run file
@@ -14,8 +14,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PATCHES_DIR="$SCRIPT_DIR/patches"
-AGENT_VERSION="3.1.0-4968"
-AGENT_BUILD_TAG="4968"
+AGENT_VERSION="3.1.0-4969"
+AGENT_BUILD_TAG="4969"
 SYNOSNAP_VERSION="0.11.6"
 OUTPUT_DIR="${OUTPUT_DIR:-$(pwd)}"
 TEMP_DIR="${TEMP_DIR:-/tmp}"
@@ -120,12 +120,10 @@ done
 
 info "  Copying patched source files..."
 for f in genconfig.sh includes.h blkdev.h blkdev.c snap_device.h tracer.c \
-         bdev_state_handler.c ioctl_handlers.c ftrace_hooking.c system_call_hooking.c; do
+         bdev_state_handler.c ioctl_handlers.c ftrace_hooking.c system_call_hooking.c \
+         mrf.c; do
     cp "$PATCHES_DIR/synosnap/$f" "$SNAP_SRC/$f"
 done
-
-info "  Reverting Debian DKMS autoinstall logic..."
-sed -i '/autoinstall/Id' "$SNAP_WORK/repack/DEBIAN/postinst"
 
 # Build the patched synosnap DEB
 PATCHED_SYNOSNAP_DEB="$WORKDIR/synosnap-${SYNOSNAP_VERSION}.deb"
@@ -150,16 +148,16 @@ if [ -f "$DRIVER_INFO" ]; then
     sed -i "s/\"version\": \"${SYNOSNAP_VERSION}\"/\"version\": \"${SYNOSNAP_VERSION}-${AGENT_BUILD_TAG}\"/" "$DRIVER_INFO"
 fi
 
-# Binary-patch build number in abb-cli and service-ctrl (4967 → 4968)
+# Binary-patch build number in abb-cli and service-ctrl (4967 → 4969)
 # The binaries store the build number as a null-terminated 4-byte string "4967\0".
-# We replace it with "4968" (same length) so `abb-cli -v` shows 3.1.0-4968.
-info "  Patching build number in binaries (4967 → 4968)..."
+# We replace it with "4969" (same length) so `abb-cli -v` shows 3.1.0-4969.
+info "  Patching build number in binaries (4967 → 4969)..."
 for bin in \
     "$AGENT_WORK/repack/bin/abb-cli" \
     "$AGENT_WORK/repack/opt/Synology/ActiveBackupforBusiness/bin/service-ctrl" \
     "$AGENT_WORK/repack/opt/Synology/ActiveBackupforBusiness/bin/synology-backupd"; do
     if [ -f "$bin" ]; then
-        perl -pi -e 's/build\x004967\x00/build\x004968\x00/g' "$bin"
+        perl -pi -e 's/build\x004967\x00/build\x004969\x00/g' "$bin"
         ok "  Patched $(basename "$bin")"
     fi
 done
@@ -202,7 +200,7 @@ else
     cat > "$OUTPUT_FILE" << 'HEADER'
 #!/bin/bash
 # Synology Active Backup for Business Agent - Patched installer
-# Kernel 6.12 support (4968 build)
+# Kernel 6.12-6.18 support (4969 build)
 echo "Synology Active Backup for Business Agent"
 echo "Extracting..."
 
