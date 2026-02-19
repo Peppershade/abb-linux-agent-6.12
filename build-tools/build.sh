@@ -125,6 +125,9 @@ for f in genconfig.sh includes.h blkdev.h blkdev.c snap_device.h tracer.c \
     cp "$PATCHES_DIR/synosnap/$f" "$SNAP_SRC/$f"
 done
 
+info "  Reverting Debian DKMS autoinstall logic..."
+sed -i '113,122 s/^/#/' "$SNAP_WORK/repack/DEBIAN/postinst"
+
 # Build the patched synosnap DEB
 PATCHED_SYNOSNAP_DEB="$WORKDIR/synosnap-${SYNOSNAP_VERSION}.deb"
 dpkg-deb --root-owner-group -b "$SNAP_WORK/repack" "$PATCHED_SYNOSNAP_DEB"
