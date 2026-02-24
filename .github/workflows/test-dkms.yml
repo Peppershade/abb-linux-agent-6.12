@@ -71,7 +71,7 @@ jobs:
           - kernel: '6.17'
             runner: ubuntu-24.04   # GCC 13 — sufficient for 6.17
           - kernel: '6.18'
-            runner: ubuntu-25.04   # GCC 15 — required for 6.18 mainline headers
+            runner: ubuntu-25.10   # GCC 15 — required for 6.18 mainline headers
           # - kernel: '6.19.3'
           #   runner: ubuntu-25.04  # uncomment when widely deployed
           # - kernel: '7.0-rc1'
