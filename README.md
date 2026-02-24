@@ -31,9 +31,11 @@ DKMS, just like the official installer.
 
 | Kernel | Distribution | Status |
 |--------|-------------|--------|
+| `6.8.0-100-generic` | Ubuntu 24.04 LTS | Verified |
 | `6.12.69+deb13-amd64` | Debian 13 | Verified |
-| `6.17.0-14-generic` | Ubuntu 25.10 | Verified |
-| `6.18.0-061800-generic` | Ubuntu 25.10 | Verified |
+| `6.12.73+deb13-amd64` | Debian 13 | Verified |
+| `6.17.0-14-generic` | Ubuntu 25.10 | Unverified |
+| `6.18.0-061800-generic` | Ubuntu 25.10 | Unverified |
 
 Running a kernel not listed here? Please
 [open an issue](https://github.com/Peppershade/abb-linux-agent-6.12/issues)
