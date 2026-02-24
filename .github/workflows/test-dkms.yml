@@ -61,23 +61,26 @@ jobs:
   # ── Step 2: compile the DKMS module against each target kernel ───────────────
   test-kernel:
     needs: build
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.container }}   # non-empty only for kernels needing newer GCC
     strategy:
       fail-fast: false
       matrix:
         include:
           - kernel: '6.12'
-            runner: ubuntu-24.04   # GCC 13 — sufficient for 6.12
           - kernel: '6.17'
-            runner: ubuntu-24.04   # GCC 13 — sufficient for 6.17
           - kernel: '6.18'
-            runner: ubuntu-25.10   # GCC 15 — required for 6.18 mainline headers
+            container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x
           # - kernel: '6.19.3'
-          #   runner: ubuntu-25.04  # uncomment when widely deployed
+          #   container: 'ubuntu:25.10'  # uncomment when widely deployed
           # - kernel: '7.0-rc1'
-          #   runner: ubuntu-25.04  # uncomment to test release candidate
+          #   container: 'ubuntu:25.10'  # uncomment to test release candidate
 
     steps:
+      - name: Bootstrap container environment
+        if: ${{ matrix.container != '' }}
+        run: apt-get update -qq && apt-get install -y sudo curl wget ca-certificates dpkg
+
       - name: Install DKMS
         run: sudo apt-get update && sudo apt-get install -y dkms
 
@@ -114,21 +117,6 @@ jobs:
           dpkg-deb -x synosnap-*.deb /tmp/synosnap-extract
           sudo cp -r "/tmp/synosnap-extract/usr/src/synosnap-${VER}" /usr/src/
           sudo dkms add "synosnap/${VER}"
-
-      - name: Ensure required GCC is available
-        run: |
-          KVER="${{ steps.kver.outputs.kver }}"
-          GCC_VER=$(grep -r '^CC\s*=' /lib/modules/$KVER/build/Makefile 2>/dev/null | grep -oP 'gcc-\d+' | head -1)
-          echo "Kernel $KVER needs: ${GCC_VER:-unknown}"
-          if [ -n "$GCC_VER" ] && ! command -v "$GCC_VER" &>/dev/null; then
-            echo "Installing $GCC_VER via toolchain PPA..."
-            sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-            sudo apt-get update -q
-            sudo apt-get install -y "$GCC_VER" || {
-              echo "::error::Could not install $GCC_VER — cannot build for kernel $KVER in CI"
-              exit 1
-            }
-          fi
 
       - name: Verify kernel build system (diagnostic)
         run: |
