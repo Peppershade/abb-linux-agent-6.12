@@ -1,0 +1,108 @@
+name: Test DKMS module build
+
+# Runs on every push to master and can be triggered manually.
+# Requires the SYNOLOGY_INSTALLER_URL repository secret to be set —
+# point it at a direct download URL for the official Synology
+# Active Backup for Business Agent 3.1.0-4967 Linux installer (.run).
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  # ── Step 1: build the patched install.run and extract the synosnap DEB ──────
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      synosnap-version: ${{ steps.meta.outputs.synosnap-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: sudo apt-get install -y dpkg perl dos2unix
+
+      - name: Fix line endings (repo checked out on Windows)
+        run: find build-tools -name "*.sh" | xargs dos2unix
+
+      - name: Download original Synology installer
+        run: curl -fsSL "${{ secrets.SYNOLOGY_INSTALLER_URL }}" -o original.run
+
+      - name: Build patched installer
+        run: bash build-tools/build.sh original.run
+
+      - name: Extract synosnap DEB from install.run
+        id: meta
+        run: |
+          mkdir payload
+          SKIP=$(awk '/^__ARCHIVE_BELOW__/{print NR+1; exit}' install.run)
+          tail -n+"$SKIP" install.run | tar xzf - -C payload
+          cp payload/synosnap-*.deb .
+          VER=$(ls synosnap-*.deb | grep -oP '\d+\.\d+\.\d+' | head -1)
+          echo "synosnap-version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Built synosnap version: $VER"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synosnap-deb
+          path: synosnap-*.deb
+
+  # ── Step 2: compile the DKMS module against each target kernel ───────────────
+  test-kernel:
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel:
+          - '6.12'
+          - '6.17'
+          - '6.18'
+          # - '6.19.3'   # uncomment when widely deployed
+          # - '7.0-rc1'  # uncomment to test release candidate (URL: v7.0-rc1/amd64)
+
+    steps:
+      - name: Install DKMS
+        run: sudo apt-get update && sudo apt-get install -y dkms
+
+      - name: Install mainline kernel headers (${{ matrix.kernel }})
+        run: |
+          BASE="https://kernel.ubuntu.com/mainline/v${{ matrix.kernel }}/amd64"
+          PAGE=$(curl -s "$BASE/")
+          ALL=$(echo "$PAGE" | grep -oP 'linux-headers-[^"<>]+_all\.deb' | head -1)
+          GEN=$(echo "$PAGE" | grep -oP 'linux-headers-[^"<>]+-generic[^"<>]+_amd64\.deb' | head -1)
+          if [ -z "$ALL" ] || [ -z "$GEN" ]; then
+            echo "Could not find header packages at $BASE"
+            echo "$PAGE"
+            exit 1
+          fi
+          echo "All headers:     $ALL"
+          echo "Generic headers: $GEN"
+          wget -q "$BASE/$ALL" "$BASE/$GEN"
+          sudo dpkg -i linux-headers-*.deb
+
+      - name: Detect installed kernel version
+        id: kver
+        run: |
+          KVER=$(dpkg -l 'linux-headers-*-generic' | awk '/^ii/{print $2}' | sed 's/linux-headers-//' | tail -1)
+          echo "kver=$KVER" >> "$GITHUB_OUTPUT"
+          echo "Target kernel: $KVER"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: synosnap-deb
+
+      - name: Register synosnap source with DKMS
+        run: |
+          VER="${{ needs.build.outputs.synosnap-version }}"
+          dpkg-deb -x synosnap-*.deb /tmp/synosnap-extract
+          sudo cp -r "/tmp/synosnap-extract/usr/src/synosnap-${VER}" /usr/src/
+          sudo dkms add "synosnap/${VER}"
+
+      - name: Build DKMS module
+        run: |
+          sudo dkms build "synosnap/${{ needs.build.outputs.synosnap-version }}" \
+            -k "${{ steps.kver.outputs.kver }}"
+
+      - name: Show DKMS status
+        run: dkms status synosnap
