@@ -7,7 +7,7 @@ name: Test DKMS module build
 
 on:
   push:
-    branches: [master]
+    branches: [master, test-ci]
   workflow_dispatch:
 
 jobs:
