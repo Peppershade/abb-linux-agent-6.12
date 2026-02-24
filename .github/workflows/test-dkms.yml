@@ -110,10 +110,27 @@ jobs:
           sudo cp -r "/tmp/synosnap-extract/usr/src/synosnap-${VER}" /usr/src/
           sudo dkms add "synosnap/${VER}"
 
+      - name: Verify kernel build system (diagnostic)
+        run: |
+          KVER="${{ steps.kver.outputs.kver }}"
+          TMPDIR=$(mktemp -d)
+          printf 'obj-m := dummy.o\nccflags-y := -Werror\n' > "$TMPDIR/Kbuild"
+          printf '#include <linux/module.h>\nMODULE_LICENSE("GPL");\n' > "$TMPDIR/dummy.c"
+          make -C "/lib/modules/$KVER/build" M="$TMPDIR" modules 2>&1 \
+            && echo "Build system OK" \
+            || echo "::warning::Kernel build system check failed for $KVER — feature tests will all report 'not present'"
+          rm -rf "$TMPDIR"
+
       - name: Build DKMS module
         run: |
           sudo dkms build "synosnap/${{ needs.build.outputs.synosnap-version }}" \
             -k "${{ steps.kver.outputs.kver }}"
+
+      - name: Show make.log on failure
+        if: failure()
+        run: |
+          LOG="/var/lib/dkms/synosnap/${{ needs.build.outputs.synosnap-version }}/build/make.log"
+          [ -f "$LOG" ] && cat "$LOG" || echo "make.log not found"
 
       - name: Show DKMS status
         run: dkms status synosnap
