@@ -61,16 +61,21 @@ jobs:
   # ── Step 2: compile the DKMS module against each target kernel ───────────────
   test-kernel:
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        kernel:
-          - '6.12'
-          - '6.17'
-          - '6.18'
-          # - '6.19.3'   # uncomment when widely deployed
-          # - '7.0-rc1'  # uncomment to test release candidate (URL: v7.0-rc1/amd64)
+        include:
+          - kernel: '6.12'
+            runner: ubuntu-24.04   # GCC 13 — sufficient for 6.12
+          - kernel: '6.17'
+            runner: ubuntu-24.04   # GCC 13 — sufficient for 6.17
+          - kernel: '6.18'
+            runner: ubuntu-25.04   # GCC 15 — required for 6.18 mainline headers
+          # - kernel: '6.19.3'
+          #   runner: ubuntu-25.04  # uncomment when widely deployed
+          # - kernel: '7.0-rc1'
+          #   runner: ubuntu-25.04  # uncomment to test release candidate
 
     steps:
       - name: Install DKMS
