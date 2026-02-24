@@ -44,7 +44,7 @@ to report whether it works — this helps others and helps us track compatibilit
 If the DKMS module build fails or you need to remove it cleanly:
 
 ```bash
-sudo dpkg --remove synosnap 2>/dev/null; sudo dkms remove synosnap/0.11.6 --all 2>/dev/null; true
+sudo dpkg --remove synosnap 2>/dev/null; sudo dkms remove synosnap/0.11.7 --all 2>/dev/null; true
 ```
 
 ---
@@ -103,7 +103,7 @@ If no path is given, it defaults to `install.run` in the same directory as the s
 
 ## What is patched
 
-The `synosnap` kernel module source (`/usr/src/synosnap-0.11.6/`) is updated
+The `synosnap` kernel module source (`/usr/src/synosnap-0.11.7/`) is updated
 to handle kernel API changes from **6.12 through 6.18**:
 
 ### Kernel 6.12
@@ -132,6 +132,16 @@ to handle kernel API changes from **6.12 through 6.18**:
 - New feature tests: `bio_qos_throttled.c`, `submit_bio_noacct_void.c`
 - `EXTRA_CFLAGS` dropped by kbuild — feature test system updated to `ccflags-y`
 
+### Installer / packaging fixes
+- **Debian 12+ DKMS autoinstall** — the original `postinst` stripped
+  `AUTOINSTALL="yes"` from `dkms.conf` on Debian 12+, causing DKMS to refuse
+  to build the module. That block is now disabled during repackaging.
+- **Unloaded kernel fallback** — `genconfig.sh` previously hard-failed when
+  building for a kernel not currently running (e.g. after a kernel upgrade).
+  It now falls back to `/proc/kallsyms` with a warning instead of aborting.
+- **synosnap version bump to 0.11.7** — forces reinstallation of the patched
+  module on machines that already had `0.11.6` installed.
+
 ## Repository layout
 
 ```
@@ -157,7 +167,8 @@ Use at your own risk.
 
 ## Contributors
 
-- [Árpád Szász](https://github.com/arpadszasz) — TEMP_DIR support, extraction fix
+- [Árpád Szász](https://github.com/arpadszasz) — TEMP_DIR support, extraction fix,
+  Debian 12+ DKMS autoinstall fix ([#2](https://github.com/Peppershade/abb-linux-agent-6.12/pull/2))
 
 ## License
 

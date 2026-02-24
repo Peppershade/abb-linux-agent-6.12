@@ -46,15 +46,12 @@ if [ ! -f "$SYSTEM_MAP_FILE" ] || [ $(cat "$SYSTEM_MAP_FILE" | wc -l) -lt 10 ]; 
 		RUNNING_KERNEL_VERSEION="$(cat /proc/version | sed 's|^Linux\ version\ \([^ ]\+\)\ .*|\1|g')"
 		if [ "${RUNNING_KERNEL_VERSEION}" != "${KERNEL_VERSION}" ]
 		then
-			# No valid SystemMap found and /proc/kallsyms not usable becuase it's upgrade, so we make build fail
-			echo_highlight "* System map at /boot/System.map-${KERNEL_VERSION} does not contain valid symbol table, and "
-			echo_highlight "* we are trying to install synosnap driver for a differnt kernel than the one currently running."
-			echo_highlight "* Synosnap driver will encounter error during installation."
-			echo_highlight "* We will try to install/build driver when next booting into new kernel."
-			echo_highlight "* After rebooting into the new kernel, if the backup process still fails,"
-			echo_highlight "* please uninstall and reinstall Active Backup for Business Linux Agent."
-
-			exit 1
+			# No valid SystemMap found for the target kernel, but we can still attempt the build
+			# using /proc/kallsyms from the running kernel as a best-effort fallback.
+			echo_highlight "* System map at /boot/System.map-${KERNEL_VERSION} does not contain valid symbol table."
+			echo_highlight "* Building for unloaded kernel ${KERNEL_VERSION} (running: ${RUNNING_KERNEL_VERSEION})."
+			echo_highlight "* Falling back to /proc/kallsyms — symbol addresses may differ slightly."
+			SYSTEM_MAP_FILE="/proc/kallsyms"
 		fi
 	fi
 

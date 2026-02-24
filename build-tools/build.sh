@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PATCHES_DIR="$SCRIPT_DIR/patches"
 AGENT_VERSION="3.1.0-4969"
 AGENT_BUILD_TAG="4969"
-SYNOSNAP_VERSION="0.11.6"
+SYNOSNAP_VERSION="0.11.7"
 OUTPUT_DIR="${OUTPUT_DIR:-$(pwd)}"
 TEMP_DIR="${TEMP_DIR:-/tmp}"
 
@@ -105,25 +105,39 @@ mkdir -p "$SNAP_WORK"
 dpkg-deb -R "$ORIG_SYNOSNAP_DEB" "$SNAP_WORK/repack"
 chmod 0755 "$SNAP_WORK/repack/DEBIAN"
 
-# Source tree location inside the DEB
+# Rename the source tree to the new version and update control/dkms.conf
+ORIG_SNAP_SRC=$(find "$SNAP_WORK/repack/usr/src" -maxdepth 1 -name "synosnap-*" -type d | head -1)
+[ -z "$ORIG_SNAP_SRC" ] && fail "synosnap source directory not found in unpacked DEB"
 SNAP_SRC="$SNAP_WORK/repack/usr/src/synosnap-${SYNOSNAP_VERSION}"
-
-if [ ! -d "$SNAP_SRC" ]; then
-    fail "synosnap source directory not found at $SNAP_SRC"
+if [ "$ORIG_SNAP_SRC" != "$SNAP_SRC" ]; then
+    mv "$ORIG_SNAP_SRC" "$SNAP_SRC"
+fi
+sed -i "s/^Version: .*/Version: ${SYNOSNAP_VERSION}/" "$SNAP_WORK/repack/DEBIAN/control"
+if [ -f "$SNAP_SRC/dkms.conf" ]; then
+    sed -i "s/^PACKAGE_VERSION=.*/PACKAGE_VERSION=\"${SYNOSNAP_VERSION}\"/" "$SNAP_SRC/dkms.conf"
 fi
 
 # Copy all patched synosnap source files
 info "  Copying patched feature tests..."
 for f in "$PATCHES_DIR/synosnap/configure-tests/feature-tests/"*; do
-    cp "$f" "$SNAP_SRC/configure-tests/feature-tests/$(basename "$f")"
+    dest="$SNAP_SRC/configure-tests/feature-tests/$(basename "$f")"
+    sed 's/\r//' "$f" > "$dest"
+    chmod --reference="$f" "$dest" 2>/dev/null || true
 done
 
 info "  Copying patched source files..."
 for f in genconfig.sh includes.h blkdev.h blkdev.c snap_device.h tracer.c \
          bdev_state_handler.c ioctl_handlers.c ftrace_hooking.c system_call_hooking.c \
          mrf.c; do
-    cp "$PATCHES_DIR/synosnap/$f" "$SNAP_SRC/$f"
+    sed 's/\r//' "$PATCHES_DIR/synosnap/$f" > "$SNAP_SRC/$f"
+    chmod --reference="$PATCHES_DIR/synosnap/$f" "$SNAP_SRC/$f" 2>/dev/null || true
 done
+
+# Disable the Debian 12+ block in postinst that strips AUTOINSTALL="yes" from dkms.conf
+# (ABB #11026 — without AUTOINSTALL, DKMS refuses to build the module automatically)
+info "  Patching postinst: disabling Debian 12+ DKMS autoinstall removal..."
+sed -i "s|sed -i '/AUTOINSTALL=\"yes\"/d' /usr/src/|# sed -i '/AUTOINSTALL=\"yes\"/d' /usr/src/|" \
+    "$SNAP_WORK/repack/DEBIAN/postinst"
 
 # Build the patched synosnap DEB
 PATCHED_SYNOSNAP_DEB="$WORKDIR/synosnap-${SYNOSNAP_VERSION}.deb"
@@ -177,8 +191,8 @@ mkdir -p "$PAYLOAD_DIR"
 cp "$EXTRACTED/install.sh" "$PAYLOAD_DIR/"
 cp "$EXTRACTED/dkms_common.postinst" "$PAYLOAD_DIR/"
 
-# Copy patched variables.sh
-cp "$PATCHES_DIR/variables.sh" "$PAYLOAD_DIR/"
+# Copy patched variables.sh (strip CRLF in case of Windows checkout)
+sed 's/\r//' "$PATCHES_DIR/variables.sh" > "$PAYLOAD_DIR/variables.sh"
 
 # Copy patched DEBs (with the names the installer expects from variables.sh)
 cp "$PATCHED_SYNOSNAP_DEB" "$PAYLOAD_DIR/synosnap-${SYNOSNAP_VERSION}.deb"

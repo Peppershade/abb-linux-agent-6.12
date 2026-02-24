@@ -1,5 +1,5 @@
-DATTOBD_PACKAGE="synosnap-0.11.6.deb"
-DATTOBD_VERSION="0.11.6"
+DATTOBD_PACKAGE="synosnap-0.11.7.deb"
+DATTOBD_VERSION="0.11.7"
 AGENT_PACKAGE="Synology Active Backup for Business Agent-3.1.0-4969.deb"
 AGENT_VERSION="4969"
 AGENT_PACKAGE_NAME="synology-active-backup-business-linux-service"
