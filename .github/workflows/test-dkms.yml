@@ -25,11 +25,22 @@ jobs:
       - name: Fix line endings (repo checked out on Windows)
         run: find build-tools -name "*.sh" | xargs dos2unix
 
-      - name: Download original Synology installer
-        run: curl -fsSL "${{ secrets.SYNOLOGY_INSTALLER_URL }}" -o original.run
+      - name: Download and extract original Synology installer
+        run: |
+          curl -fsSL "${{ secrets.SYNOLOGY_INSTALLER_URL }}" -o synology.zip
+          unzip -q synology.zip -d synology_pkg
+          # Find the .run file or extracted directory inside the zip
+          RUN=$(find synology_pkg -maxdepth 2 -name "*.run" | head -1)
+          if [ -n "$RUN" ]; then
+            echo "SYNOLOGY_INPUT=$RUN" >> "$GITHUB_ENV"
+          else
+            DIR=$(find synology_pkg -maxdepth 2 -name "install.sh" | head -1 | xargs -I{} dirname {})
+            echo "SYNOLOGY_INPUT=$DIR" >> "$GITHUB_ENV"
+          fi
+          echo "Using input: $SYNOLOGY_INPUT"
 
       - name: Build patched installer
-        run: bash build-tools/build.sh original.run
+        run: bash build-tools/build.sh "$SYNOLOGY_INPUT"
 
       - name: Extract synosnap DEB from install.run
         id: meta
