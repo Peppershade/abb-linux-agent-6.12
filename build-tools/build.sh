@@ -131,6 +131,7 @@ for f in genconfig.sh includes.h blkdev.h blkdev.c snap_device.h tracer.c \
          mrf.c; do
     sed 's/\r//' "$PATCHES_DIR/synosnap/$f" > "$SNAP_SRC/$f"
     chmod --reference="$PATCHES_DIR/synosnap/$f" "$SNAP_SRC/$f" 2>/dev/null || true
+    [[ "$f" == *.sh ]] && chmod +x "$SNAP_SRC/$f"
 done
 
 # Disable the Debian 12+ block in postinst that strips AUTOINSTALL="yes" from dkms.conf
