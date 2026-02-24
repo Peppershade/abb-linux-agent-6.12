@@ -3,6 +3,8 @@
 
 # Synology Active Backup for Business Agent — Kernel 6.12–6.18 Patches
 
+[![DKMS module build](https://github.com/Peppershade/abb-linux-agent-6.12/actions/workflows/test-dkms.yml/badge.svg)](https://github.com/Peppershade/abb-linux-agent-6.12/actions/workflows/test-dkms.yml)
+
 Synology has not updated the Active Backup for Business Linux agent since
 kernel 6.8. Their `synosnap` DKMS module fails to compile on 6.12 and later
 due to upstream kernel API changes — leaving users on modern distributions
@@ -34,8 +36,12 @@ DKMS, just like the official installer.
 | `6.8.0-100-generic` | Ubuntu 24.04 LTS | Verified |
 | `6.12.69+deb13-amd64` | Debian 13 | Verified |
 | `6.12.73+deb13-amd64` | Debian 13 | Verified |
-| `6.17.0-14-generic` | Ubuntu 25.10 | Unverified |
-| `6.18.0-061800-generic` | Ubuntu 25.10 | Unverified |
+| `6.17.0-14-generic` | Ubuntu 25.10 | CI Tested |
+| `6.18.0-061800-generic` | Ubuntu 25.10 | CI Tested |
+
+**Status legend:**
+- **Verified** — full install tested on real hardware; agent connected and backed up successfully
+- **CI Tested** — `synosnap` module compiled successfully against mainline kernel headers in GitHub Actions; not yet confirmed with a live install
 
 Running a kernel not listed here? Please
 [open an issue](https://github.com/Peppershade/abb-linux-agent-6.12/issues)
