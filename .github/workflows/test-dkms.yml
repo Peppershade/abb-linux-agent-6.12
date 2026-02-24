@@ -110,6 +110,19 @@ jobs:
           sudo cp -r "/tmp/synosnap-extract/usr/src/synosnap-${VER}" /usr/src/
           sudo dkms add "synosnap/${VER}"
 
+      - name: Ensure required GCC is available
+        run: |
+          KVER="${{ steps.kver.outputs.kver }}"
+          GCC_VER=$(grep -r '^CC\s*=' /lib/modules/$KVER/build/Makefile 2>/dev/null | grep -oP 'gcc-\d+' | head -1)
+          echo "Kernel $KVER needs: ${GCC_VER:-unknown}"
+          if [ -n "$GCC_VER" ] && ! command -v "$GCC_VER" &>/dev/null; then
+            echo "Installing $GCC_VER..."
+            sudo apt-get install -y "$GCC_VER" 2>/dev/null || {
+              echo "$GCC_VER not in repos — symlinking $(which gcc) as $GCC_VER"
+              sudo ln -sf "$(which gcc)" "/usr/local/bin/$GCC_VER"
+            }
+          fi
+
       - name: Verify kernel build system (diagnostic)
         run: |
           KVER="${{ steps.kver.outputs.kver }}"
