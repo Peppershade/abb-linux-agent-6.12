@@ -1,6 +1,9 @@
 > **WARNING:** This project is **not affiliated with, endorsed by, or supported by Synology Inc.**
 > No support is provided — use at your own risk.
 
+# Currently broken due to 3.2.0-5053
+Have to create new mappings for 6.14+, good news, 6.12/6.14 is now officially supported :)
+
 # Synology Active Backup for Business Agent — Kernel 6.12–6.18 Patches
 
 [![DKMS module build](https://github.com/Peppershade/abb-linux-agent-6.12/actions/workflows/test-dkms.yml/badge.svg)](https://github.com/Peppershade/abb-linux-agent-6.12/actions/workflows/test-dkms.yml)
