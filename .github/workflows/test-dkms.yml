@@ -7,7 +7,7 @@ name: Test DKMS module build
 
 on:
   push:
-    branches: [master, test-ci, 3.2.0-5054]
+    branches: [master, test-ci, 3.2.0-5054, ci-kernel-6.19]
   workflow_dispatch:
 
 jobs:
@@ -71,6 +71,8 @@ jobs:
           - kernel: '6.15'
           - kernel: '6.17'
           - kernel: '6.18'
+            container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x
+          - kernel: '6.19'
             container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x
 
     steps:
