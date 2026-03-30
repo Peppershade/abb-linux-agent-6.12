@@ -19,7 +19,7 @@ Datto Inc. (2015)
   └─ dattobd — original block device snapshot driver
        └─ Elastio Software (2020)
             └─ elastio-snap — forked and extended
-                 └─ Axcient (2024, after acquiring Elastio)
+                 └─ Axcient (2024, forked elastio-snap)
                       └─ elastio-snap — actively maintained
                            └─ Synology
                                 └─ synosnap — renamed, repackaged,
