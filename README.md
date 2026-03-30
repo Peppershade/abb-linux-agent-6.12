@@ -32,7 +32,6 @@ DKMS, just like the official installer.
 
 | Kernel | Distribution | Status |
 |--------|-------------|--------|
-| `6.8.0-100-generic` | Ubuntu 24.04 LTS | Verified |
 | `6.14.0-061400-generic` | Ubuntu mainline | CI Tested |
 | `6.15.0-061500-generic` | Ubuntu mainline | CI Tested |
 | `6.17.0-061700-generic` | Ubuntu mainline | CI Tested |
