@@ -3,7 +3,7 @@
 
 # Synology Active Backup for Business Agent — Kernel 6.15–6.18 Patches
 
-[![DKMS module build](https://github.com/Peppershade/abb-linux-agent-6.12/actions/workflows/test-dkms.yml/badge.svg)](https://github.com/Peppershade/abb-linux-agent-6.12/actions/workflows/test-dkms.yml)
+[![DKMS module build](https://github.com/Peppershade/abb-linux-agent/actions/workflows/test-dkms.yml/badge.svg)](https://github.com/Peppershade/abb-linux-agent/actions/workflows/test-dkms.yml)
 
 Synology's `3.2.0-5053` release officially added support up to kernel 6.14.
 Their `synosnap` DKMS module still fails to compile on 6.15 and later due to
@@ -19,7 +19,7 @@ support, ABB will automatically install their version over this one.
 
 Pre-built installer ready to deploy:
 
-**[Download install.run](https://github.com/Peppershade/abb-linux-agent-6.12/releases/latest)**
+**[Download install.run](https://github.com/Peppershade/abb-linux-agent/releases/latest)**
 
 ```bash
 sudo bash install.run
@@ -59,7 +59,7 @@ If you install with Secure Boot active, the module will build successfully but
 fail to load, and backups will not run.
 
 Running a kernel not listed here? Please
-[open an issue](https://github.com/Peppershade/abb-linux-agent-6.12/issues)
+[open an issue](https://github.com/Peppershade/abb-linux-agent/issues)
 to report whether it works — this helps others and helps us track compatibility.
 
 ## Uninstall
@@ -162,11 +162,12 @@ Use at your own risk.
 ## Contributors
 
 - [Árpád Szász](https://github.com/arpadszasz) — TEMP_DIR support, extraction fix,
-  Debian 12+ DKMS autoinstall fix ([#2](https://github.com/Peppershade/abb-linux-agent-6.12/pull/2))
+  Debian 12+ DKMS autoinstall fix ([#2](https://github.com/Peppershade/abb-linux-agent/pull/2))
 
 ## License
 
-The patched source files are derived from Synology's original `synosnap` module
-(based on [elastio-snap](https://github.com/elastio/elastio-snap)). The original
-code is licensed under the GPL v2. Patches in this repository are provided under
-the same license.
+The patched source files are derived from Synology's `synosnap` kernel module,
+which is based on [elastio-snap](https://github.com/elastio/elastio-snap)
+(originally [dattobd](https://github.com/datto/dattobd) by Datto Inc.).
+The original code is licensed under the GPL v2. Patches in this repository are
+provided under the same license.
