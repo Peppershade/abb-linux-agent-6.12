@@ -167,7 +167,7 @@ Use at your own risk.
 ## License
 
 The patched source files are derived from Synology's `synosnap` kernel module,
-which is based on [elastio-snap](https://github.com/elastio/elastio-snap)
-(originally [dattobd](https://github.com/datto/dattobd) by Datto Inc.).
+which is based on [elastio-snap](https://github.com/Axcient/elastio-snap)
+(maintained by Axcient; originally [dattobd](https://github.com/datto/dattobd) by Datto Inc.).
 The original code is licensed under the GPL v2. Patches in this repository are
 provided under the same license.

@@ -8,6 +8,8 @@ name: Test DKMS module build
 on:
   push:
     branches: [master, test-ci, 3.2.0-5054]
+    paths:
+      - 'build-tools/**'
   workflow_dispatch:
 
 jobs:
