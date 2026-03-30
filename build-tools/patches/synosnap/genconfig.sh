@@ -61,8 +61,12 @@ if [ ! -f "$SYSTEM_MAP_FILE" ] || [ $(cat "$SYSTEM_MAP_FILE" | wc -l) -lt 10 ]; 
 		if [ "$(uname -r)" != "$KERNEL_VERSION" ]; then
 			echo "No System.map found, trying to extract it from the *.deb package"
 			if [ -f /etc/debian_version ] && ! deb_extract_system_map; then
-				echo "Could not extract System.map automatically. Aborting process."
-				exit 1
+				echo "Warning: Could not extract System.map for $KERNEL_VERSION. Falling back to /proc/kallsyms."
+				SYSTEM_MAP_FILE="/proc/kallsyms"
+				if [ "$EUID" -ne 0 ]; then
+					echo "Run 'make' command as sudo or root. Otherwise it is not possible to get addresses from the $SYSTEM_MAP_FILE"
+					exit 1
+				fi
 			fi
 		else
 			# If this is not an upgrade, fallback to kallsyms
