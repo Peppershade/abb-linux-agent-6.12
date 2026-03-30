@@ -1,5 +1,5 @@
 #!/bin/bash
-# build.sh - Rebuild Synology Active Backup for Business Agent with kernel 6.12-6.18 patches
+# build.sh - Rebuild Synology Active Backup for Business Agent with kernel 6.15-6.18 patches
 #
 # Usage:
 #   ./build.sh /path/to/original-install.run              # from original .run file
@@ -14,9 +14,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PATCHES_DIR="$SCRIPT_DIR/patches"
-AGENT_VERSION="3.1.0-4969"
-AGENT_BUILD_TAG="4969"
-SYNOSNAP_VERSION="0.11.7"
+AGENT_VERSION="3.2.0-5054"
+AGENT_BUILD_TAG="5054"
+SYNOSNAP_VERSION="0.12.11"
 OUTPUT_DIR="${OUTPUT_DIR:-$(pwd)}"
 TEMP_DIR="${TEMP_DIR:-/tmp}"
 
@@ -36,7 +36,7 @@ if [ $# -lt 1 ]; then
     echo ""
     echo "Examples:"
     echo "  $0 ./install.run"
-    echo "  $0 ./Synology\\ Active\\ Backup\\ for\\ Business\\ Agent-3.1.0-4967-x64-deb/extracted"
+    echo "  $0 ./Synology\\ Active\\ Backup\\ for\\ Business\\ Agent-3.2.0-5053-x64-deb/extracted"
     exit 1
 fi
 
@@ -87,7 +87,7 @@ else
 fi
 
 # --- Locate the original DEBs ---
-ORIG_AGENT_DEB=$(find "$EXTRACTED" -maxdepth 1 -name "Synology Active Backup for Business Agent-3.1.0-*.deb" | head -1)
+ORIG_AGENT_DEB=$(find "$EXTRACTED" -maxdepth 1 -name "Synology Active Backup for Business Agent-3.2.0-*.deb" | head -1)
 ORIG_SYNOSNAP_DEB=$(find "$EXTRACTED" -maxdepth 1 -name "synosnap-*.deb" | head -1)
 
 [ -z "$ORIG_AGENT_DEB" ] && fail "Original agent DEB not found in $EXTRACTED"
@@ -97,7 +97,7 @@ info "Original agent DEB: $(basename "$ORIG_AGENT_DEB")"
 info "Original synosnap DEB: $(basename "$ORIG_SYNOSNAP_DEB")"
 
 # --- Step 2: Repackage synosnap DEB with patched sources ---
-info "Repacking synosnap DEB with kernel 6.12 patches..."
+info "Repacking synosnap DEB with kernel 6.15-6.18 patches..."
 
 SNAP_WORK="$WORKDIR/synosnap_repack"
 mkdir -p "$SNAP_WORK"
@@ -118,17 +118,20 @@ if [ -f "$SNAP_SRC/dkms.conf" ]; then
 fi
 
 # Copy all patched synosnap source files
-info "  Copying patched feature tests..."
+info "  Copying patched configure-tests..."
 for f in "$PATCHES_DIR/synosnap/configure-tests/feature-tests/"*; do
     dest="$SNAP_SRC/configure-tests/feature-tests/$(basename "$f")"
     sed 's/\r//' "$f" > "$dest"
     chmod --reference="$f" "$dest" 2>/dev/null || true
 done
+sed 's/\r//' "$PATCHES_DIR/synosnap/configure-tests/config-tests" \
+    > "$SNAP_SRC/configure-tests/config-tests"
+sed 's/\r//' "$PATCHES_DIR/synosnap/configure-tests/symbol-tests" \
+    > "$SNAP_SRC/configure-tests/symbol-tests"
 
 info "  Copying patched source files..."
-for f in genconfig.sh includes.h blkdev.h blkdev.c snap_device.h tracer.c \
-         bdev_state_handler.c ioctl_handlers.c ftrace_hooking.c system_call_hooking.c \
-         mrf.c; do
+for f in genconfig.sh includes.h main.c extract_mount_params.c extract_mount_params.h \
+         elastio-snap.h nl_debug.c nl_debug.h Makefile; do
     sed 's/\r//' "$PATCHES_DIR/synosnap/$f" > "$SNAP_SRC/$f"
     chmod --reference="$PATCHES_DIR/synosnap/$f" "$SNAP_SRC/$f" 2>/dev/null || true
     [[ "$f" == *.sh ]] && chmod +x "$SNAP_SRC/$f"
@@ -163,16 +166,16 @@ if [ -f "$DRIVER_INFO" ]; then
     sed -i "s/\"version\": \"${SYNOSNAP_VERSION}\"/\"version\": \"${SYNOSNAP_VERSION}-${AGENT_BUILD_TAG}\"/" "$DRIVER_INFO"
 fi
 
-# Binary-patch build number in abb-cli and service-ctrl (4967 → 4969)
-# The binaries store the build number as a null-terminated 4-byte string "4967\0".
-# We replace it with "4969" (same length) so `abb-cli -v` shows 3.1.0-4969.
-info "  Patching build number in binaries (4967 → 4969)..."
+# Binary-patch build number in abb-cli and service-ctrl (5053 → 5054)
+# The binaries store the build number as a null-terminated 4-byte string "5053\0".
+# We replace it with "5054" (same length) so `abb-cli -v` shows 3.2.0-5054.
+info "  Patching build number in binaries (5053 → 5054)..."
 for bin in \
     "$AGENT_WORK/repack/bin/abb-cli" \
     "$AGENT_WORK/repack/opt/Synology/ActiveBackupforBusiness/bin/service-ctrl" \
     "$AGENT_WORK/repack/opt/Synology/ActiveBackupforBusiness/bin/synology-backupd"; do
     if [ -f "$bin" ]; then
-        perl -pi -e 's/build\x004967\x00/build\x004969\x00/g' "$bin"
+        perl -pi -e 's/build\x005053\x00/build\x005054\x00/g' "$bin"
         ok "  Patched $(basename "$bin")"
     fi
 done
@@ -215,7 +218,7 @@ else
     cat > "$OUTPUT_FILE" << 'HEADER'
 #!/bin/bash
 # Synology Active Backup for Business Agent - Patched installer
-# Kernel 6.12-6.18 support (4969 build)
+# Kernel 6.15-6.18 support (5054 build)
 echo "Synology Active Backup for Business Agent"
 echo "Extracting..."
 

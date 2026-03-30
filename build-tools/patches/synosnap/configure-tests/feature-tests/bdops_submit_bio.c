@@ -1,19 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 /*
- * Copyright (C) 2022-2023 Datto Inc.
+ * Copyright (C) 2020 Elastio Software Inc.
  */
 
-// 5.9 <= kernel_version
+// kernel_version >= 5.16
 
 #include "includes.h"
-
 MODULE_LICENSE("GPL");
 
+static void snap_submit_bio(struct bio *bio)
+{
+	(void)bio;
+}
+
 static inline void dummy(void){
+	struct bio b;
 	struct block_device_operations bdo = {
-		.submit_bio = NULL,
+		.submit_bio = snap_submit_bio,
 	};
 
-	(void)bdo;
+	bdo.submit_bio(&b);
 }

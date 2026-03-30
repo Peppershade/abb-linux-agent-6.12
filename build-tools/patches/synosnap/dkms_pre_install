@@ -1,0 +1,64 @@
+#!/bin/bash
+
+generate_key()
+{
+	openssl req -config /opt/synosnap/openssl.conf \
+	-subj "/CN=`hostname -s | cut -b1-24` Secure Boot Module Signature key /O=`hostname -s | cut -b1-24`" \
+	-new -x509 -batch -sha256 \
+	-nodes -days 36500 -outform DER \
+	-keyout "/opt/synosnap/MOK.priv" \
+	-out "/opt/synosnap/MOK.der"
+}
+
+sign_module()
+{
+	local priv=$1
+	local pub=$2
+
+	/usr/src/linux-headers-$kernelver/scripts/sign-file \
+	sha256 \
+	$priv \
+	$pub \
+	/var/lib/dkms/$module/$module_version/$kernelver/$arch/module/$module.ko
+}
+
+. /etc/os-release
+
+if [ "${ID}" == "ubuntu" ];then
+	exit 0
+fi
+
+if [ -n "$(which mokutil)" ];then
+	secure_boot=$(mokutil --sb-state)
+	echo "ENROLL=\"0\"" > /opt/synosnap/enroll
+
+	if [ "$secure_boot" == "SecureBoot enabled" ];then
+		success="0"
+
+		if [ -f /opt/synosnap/KEY ];then
+			 . /opt/synosnap/KEY
+		fi
+
+		if [ "$PRIVATE_KEY" != "" ] && [ "$PUBLIC_KEY" != "" ];then
+			sign_module $PRIVATE_KEY $PUBLIC_KEY
+
+			echo "PRIVATE_KEY=$PRIVATE_KEY" > /opt/synosnap/KEY
+			echo "PUBLIC_KEY=$PUBLIC_KEY" >> /opt/synosnap/KEY
+
+			success="1"
+		fi
+
+		if [ "$success" == "0" ];then
+			if [ ! -f /opt/synosnap/MOK.priv ];then
+				generate_key
+				chmod 700 /opt/synosnap/MOK.priv
+
+				# need enroll key
+				echo "ENROLL=\"1\"" > /opt/synosnap/enroll
+			fi
+
+			sign_module /opt/synosnap/MOK.priv /opt/synosnap/MOK.der
+		fi
+	fi
+fi
+

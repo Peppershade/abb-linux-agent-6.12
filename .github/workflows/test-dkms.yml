@@ -3,11 +3,11 @@ name: Test DKMS module build
 # Runs on every push to master and can be triggered manually.
 # Requires the SYNOLOGY_INSTALLER_URL repository secret to be set —
 # point it at a direct download URL for the official Synology
-# Active Backup for Business Agent 3.1.0-4967 Linux installer (.run).
+# Active Backup for Business Agent 3.2.0-5053 Linux installer (.run).
 
 on:
   push:
-    branches: [master, test-ci]
+    branches: [master, test-ci, 3.2.0-5054]
   workflow_dispatch:
 
 jobs:
@@ -67,14 +67,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - kernel: '6.12'
+          - kernel: '6.14'
+          - kernel: '6.15'
           - kernel: '6.17'
           - kernel: '6.18'
             container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x
-          # - kernel: '6.19.3'
-          #   container: 'ubuntu:25.10'  # uncomment when widely deployed
-          # - kernel: '7.0-rc1'
-          #   container: 'ubuntu:25.10'  # uncomment to test release candidate
 
     steps:
       - name: Bootstrap container environment

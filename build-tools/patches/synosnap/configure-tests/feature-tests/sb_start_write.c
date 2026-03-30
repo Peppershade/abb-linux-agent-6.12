@@ -2,14 +2,14 @@
 
 /*
  * Copyright (C) 2015 Datto Inc.
+ * Additional contributions by Elastio Software, Inc are Copyright (C) 2020 Elastio Software Inc.
  */
 
 #include "includes.h"
-
 MODULE_LICENSE("GPL");
 
 static inline void dummy(void){
-	struct super_block *sb = NULL;
-	sb_start_write(sb);
-	sb_end_write(sb);
+	struct inode i;
+	sb_start_write(i.i_sb);
+	sb_end_write(i.i_sb);
 }
