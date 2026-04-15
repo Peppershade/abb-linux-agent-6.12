@@ -1,7 +1,7 @@
 > **WARNING:** This project is **not affiliated with, endorsed by, or supported by Synology Inc.**
 > No support is provided — use at your own risk.
 
-# Synology Active Backup for Business Agent — Kernel 6.15–6.19 Patches
+# Synology Active Backup for Business Agent — Kernel 6.15–7.0 Patches
 
 [![DKMS module build](https://github.com/Peppershade/abb-linux-agent/actions/workflows/test-dkms.yml/badge.svg)](https://github.com/Peppershade/abb-linux-agent/actions/workflows/test-dkms.yml)
 
@@ -40,6 +40,7 @@ DKMS, just like the official installer.
 | `6.18.0-061800-generic` | Ubuntu 25.10 | CI Tested |
 | `6.19.0-061900-generic` | Ubuntu mainline | CI Tested |
 | `6.19.10-061910-generic` | Ubuntu 25.10 | Verified |
+| `7.0.0-070000-generic` | Ubuntu 25.10 | Verified |
 
 **Status legend:**
 - **Verified** — full install tested on real hardware; agent connected and backed up successfully
@@ -121,7 +122,7 @@ This will:
 
 The `synosnap` kernel module source (`/usr/src/synosnap-0.12.11/`) is based on
 Synology's `0.12.10` (from `3.2.0-5053`) and patched to handle kernel API
-changes from **6.15 through 6.19**:
+changes from **6.15 through 7.0**:
 
 ### Kernel 6.17+
 - `freeze_super()` / `thaw_super()` gained a third `owner` argument —
