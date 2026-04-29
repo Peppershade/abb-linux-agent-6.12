@@ -958,25 +958,26 @@ static void bio_free_pages(struct bio *bio){
 #define BIO_SET_SIZE 256
 #define bio_last_sector(bio) (bio_sector(bio) + (bio_size(bio) / SECTOR_SIZE))
 
-/* don't perform COW operation */
-#if defined HAVE_ENUM_REQ_OP && defined REQ_OP_BITS
-//#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,8,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-/* special case for deb9's 4.9 train
- * Bit 30 conflicts with struct bio's bi_opf opcode bitfield, which occupies the top 3 bits of the member. If we set
- * that bit, it will mutate the operation that the bio is representing. Setting this to 28 puts this in an unused flag
- * for bi_opf (that flag means something in struct request's cmd_flags, but we're not setting that).
+/*
+ * Passthrough (re-entry) detection.
  *
- * Note: CentOS 7 has enum req_op starting from the version 7.4, kernel 3.10.0-693. But this enum has just 4 values
- * instead of 6 as in other kernels, where this enum is present. And it doesn't have defined REQ_OP_BITS, which could
- * be defined and equal to the 2 bits.
+ * When snap_mrf_thread submits a bio via sd_orig_mrf, blk_mq_submit_bio can
+ * split the bio internally and resubmit the tail through submit_bio_noacct,
+ * which re-enters our installed fops->submit_bio (tracing_mrf). We must
+ * recognise that re-entry and skip COW tracking — otherwise the tail would
+ * be double-tracked.
+ *
+ * Older versions of this module marked the bio with a private bit in
+ * bio->bi_opf (ELASTIO_SNAP_PASSTHROUGH). That approach is unsafe: kernel
+ * bi_opf flag bits are a tight and growing resource (e.g. kernel 6.17 added
+ * REQ_P2PDMA at bit 28, previously used by this module). Setting such a bit
+ * on ordinary pages caused NVMe to return BLK_STS_INVAL, which in turn made
+ * ext4 fail the unwritten -> written extent conversion and corrupted files.
+ *
+ * Instead we detect re-entry by comparing `current` against
+ * dev->sd_mrf_thread. Re-entry from blk_mq split/resubmit runs synchronously
+ * on the submitting task, so this is both sufficient and cheap.
  */
-#define __ELASTIO_SNAP_PASSTHROUGH 28	// set as the last flag bit
-#else
-// set as an unused flag in versions older than 4.8
-// set as an unused opcode bit in kernels newer than 4.9
-#define __ELASTIO_SNAP_PASSTHROUGH 30
-#endif
-#define ELASTIO_SNAP_PASSTHROUGH (1ULL << __ELASTIO_SNAP_PASSTHROUGH)
 
 #define ELASTIO_SNAP_DEFAULT_SNAP_DEVICES 24
 #define ELASTIO_SNAP_MAX_SNAP_DEVICES 255
@@ -4001,8 +4002,10 @@ static int snap_mrf_thread(void *data){
 		//safely dequeue a bio
 		bio = bio_queue_dequeue(bq);
 
-		//submit the original bio to the block IO layer
-		elastio_snap_bio_op_set_flag(bio, ELASTIO_SNAP_PASSTHROUGH);
+		//submit the original bio to the block IO layer. Any re-entry into
+		//tracing_mrf caused by blk_mq splitting/resubmission runs on this
+		//kthread, so tracing_mrf detects it via `current == sd_mrf_thread`
+		//without needing to stamp anything into bio->bi_opf.
 
 #ifdef NETLINK_DEBUG
 		nl_trace_event_bio(NL_EVENT_BIO_CALL_ORIG, bio, 0);
@@ -4541,11 +4544,20 @@ static MRF_RETURN_TYPE tracing_mrf(struct request_queue *q, struct bio *bio){
 		if (!tracer_matches_bio(dev, bio)) continue;
 
 		orig_mrf = dev->sd_orig_mrf;
-		if(elastio_snap_bio_op_flagged(bio, ELASTIO_SNAP_PASSTHROUGH)){
+		/*
+		 * Detect re-entry from our own snap_mrf_thread. When that thread
+		 * submits a bio through sd_orig_mrf, blk_mq_submit_bio may split
+		 * and resubmit the tail via submit_bio_noacct, which lands back
+		 * here. The resubmission runs synchronously on sd_mrf_thread, so
+		 * `current == sd_mrf_thread` uniquely identifies passthrough
+		 * bios. This replaces an older scheme that stamped bit 28 of
+		 * bio->bi_opf — a bit that kernel 6.17 reclaimed for REQ_P2PDMA,
+		 * causing NVMe BLK_STS_INVAL and ext4 data corruption.
+		 */
+		if(READ_ONCE(dev->sd_mrf_thread) == current){
 #ifdef NETLINK_DEBUG
 	nl_trace_event_bio(NL_EVENT_BIO_CALL_ORIG, bio, 0);
 #endif
-			elastio_snap_bio_op_clear_flag(bio, ELASTIO_SNAP_PASSTHROUGH);
 			goto call_orig;
 		}
 
@@ -5877,7 +5889,7 @@ static int __verify_minor(unsigned int minor, int mode){
 		}
 	}else{
 		if(!snap_devices[minor]){
-			LOG_ERROR(-ENOENT, "device specified does not exist");
+			LOG_DEBUG("device specified does not exist (minor %u)", minor);
 			return -ENOENT;
 		}
 
@@ -6095,7 +6107,8 @@ static int ioctl_reconfigure(unsigned int minor, unsigned long cache_size){
 	return 0;
 
 error:
-	LOG_ERROR(ret, "error during reconfigure ioctl handler");
+	if (ret != -ENOENT)
+		LOG_ERROR(ret, "error during reconfigure ioctl handler");
 	return ret;
 }
 

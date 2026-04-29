@@ -41,6 +41,7 @@ DKMS, just like the official installer.
 | `6.19.0-061900-generic` | Ubuntu mainline | CI Tested |
 | `6.19.10-061910-generic` | Ubuntu 25.10 | Verified |
 | `7.0.0-070000-generic` | Ubuntu 25.10 | Verified |
+| `7.0.0-14-generic` | Kubuntu 26.04 LTS | Verified |
 
 **Status legend:**
 - **Verified** — full install tested on real hardware; agent connected and backed up successfully
@@ -70,7 +71,7 @@ to report whether it works — this helps others and helps us track compatibilit
 If the DKMS module build fails or you need to remove it cleanly:
 
 ```bash
-sudo dpkg --remove synosnap 2>/dev/null; sudo dkms remove synosnap/0.12.11 --all 2>/dev/null; true
+sudo dpkg --remove synosnap 2>/dev/null; sudo dkms remove synosnap/0.12.12 --all 2>/dev/null; sudo dkms remove synosnap/0.12.11 --all 2>/dev/null; true
 ```
 
 ---
@@ -120,11 +121,17 @@ This will:
 
 ## What is patched
 
-The `synosnap` kernel module source (`/usr/src/synosnap-0.12.11/`) is based on
+The `synosnap` kernel module source (`/usr/src/synosnap-0.12.12/`) is based on
 Synology's `0.12.10` (from `3.2.0-5053`) and patched to handle kernel API
 changes from **6.15 through 7.0**:
 
 ### Kernel 6.17+
+- **Data corruption fix** — `synosnap` was marking bios with bit 28 of
+  `bio->bi_opf` as a passthrough flag. Kernel 6.17 reclaimed bit 28 as
+  `REQ_P2PDMA`, causing NVMe to return `BLK_STS_INVAL` on every tracked write,
+  which made ext4 fail unwritten→written extent conversions and silently corrupt
+  files. Fixed by replacing the bit-flag with a `current == sd_mrf_thread` check
+  (the re-entry from `blk_mq_submit_bio` always runs on that thread synchronously).
 - `freeze_super()` / `thaw_super()` gained a third `owner` argument —
   `freeze_super_3.c` feature test added, `main.c` updated with new call path
 
@@ -135,8 +142,8 @@ changes from **6.15 through 7.0**:
 - **Unloaded kernel fallback** — `genconfig.sh` hard-failed when building for
   a kernel not currently running (e.g. after a kernel upgrade or in CI).
   It now falls back to `/proc/kallsyms` with a warning instead of aborting.
-- **synosnap version bump to 0.12.11** — forces reinstallation of the patched
-  module on machines that already had `0.12.10` installed.
+- **synosnap version bump to 0.12.12** — forces reinstallation of the patched
+  module on machines that already had `0.12.11` or earlier installed.
 
 ## Repository layout
 
@@ -166,6 +173,8 @@ Use at your own risk.
 
 - [Árpád Szász](https://github.com/arpadszasz) — TEMP_DIR support, extraction fix,
   Debian 12+ DKMS autoinstall fix ([#2](https://github.com/Peppershade/abb-linux-agent/pull/2))
+- [noidvan](https://github.com/noidvan) — fix data corruption on kernel 6.17+ (REQ_P2PDMA bit 28
+  clash in `bio->bi_opf`) ([#14](https://github.com/Peppershade/abb-linux-agent/pull/14))
 
 ## License
 
