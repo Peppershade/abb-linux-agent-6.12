@@ -81,7 +81,7 @@ jobs:
           - kernel: '6.19'
             container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x
           - kernel: '7.0'
-            container: 'ubuntu:26.04'   # provides GCC 15; Ubuntu 26.04 (Resolute Raccoon) ships kernel 7.0
+            container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x/26.x
 
     steps:
       - name: Bootstrap container environment
