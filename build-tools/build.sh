@@ -1,5 +1,5 @@
 #!/bin/bash
-# build.sh - Rebuild Synology Active Backup for Business Agent with kernel 6.15-6.18 patches
+# build.sh - Rebuild Synology Active Backup for Business Agent with kernel 6.15-7.0 patches
 #
 # Usage:
 #   ./build.sh /path/to/original-install.run              # from original .run file
@@ -14,8 +14,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PATCHES_DIR="$SCRIPT_DIR/patches"
-AGENT_VERSION="3.2.0-5054"
-AGENT_BUILD_TAG="5054"
+AGENT_VERSION="3.2.0-5055"
+AGENT_BUILD_TAG="5055"
 SYNOSNAP_VERSION="0.12.12"
 OUTPUT_DIR="${OUTPUT_DIR:-$(pwd)}"
 TEMP_DIR="${TEMP_DIR:-/tmp}"
@@ -101,7 +101,7 @@ info "Original agent DEB: $(basename "$ORIG_AGENT_DEB")"
 info "Original synosnap DEB: $(basename "$ORIG_SYNOSNAP_DEB")"
 
 # --- Step 2: Repackage synosnap DEB with patched sources ---
-info "Repacking synosnap DEB with kernel 6.15-6.18 patches..."
+info "Repacking synosnap DEB with kernel 6.15-7.0 patches..."
 
 SNAP_WORK="$WORKDIR/synosnap_repack"
 mkdir -p "$SNAP_WORK"
@@ -173,13 +173,13 @@ fi
 # Binary-patch build number in abb-cli and service-ctrl (5053 → 5054)
 # The binaries store the build number as a null-terminated 4-byte string "5053\0".
 # We replace it with "5054" (same length) so `abb-cli -v` shows 3.2.0-5054.
-info "  Patching build number in binaries (5053 → 5054)..."
+info "  Patching build number in binaries (5053 → 5055)..."
 for bin in \
     "$AGENT_WORK/repack/bin/abb-cli" \
     "$AGENT_WORK/repack/opt/Synology/ActiveBackupforBusiness/bin/service-ctrl" \
     "$AGENT_WORK/repack/opt/Synology/ActiveBackupforBusiness/bin/synology-backupd"; do
     if [ -f "$bin" ]; then
-        perl -pi -e 's/build\x005053\x00/build\x005054\x00/g' "$bin"
+        perl -pi -e 's/build\x005053\x00/build\x005055\x00/g' "$bin"
         ok "  Patched $(basename "$bin")"
     fi
 done
@@ -222,7 +222,7 @@ else
     cat > "$OUTPUT_FILE" << 'HEADER'
 #!/bin/bash
 # Synology Active Backup for Business Agent - Patched installer
-# Kernel 6.15-6.18 support (5054 build)
+# Kernel 6.15-7.0 support (5055 build)
 echo "Synology Active Backup for Business Agent"
 echo "Extracting..."
 

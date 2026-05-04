@@ -5995,7 +5995,8 @@ static int ioctl_destroy(unsigned int minor){
 	//verify that the minor number is valid
 	ret = verify_minor_in_use_not_busy(minor);
 	if(ret){
-		LOG_ERROR(ret, "error during destroy ioctl handler");
+		if(ret != -ENOENT)
+			LOG_ERROR(ret, "error during destroy ioctl handler");
 		return ret;
 	}
 
@@ -6029,11 +6030,13 @@ static int ioctl_transition_inc(unsigned int minor){
 	}
 
 	//check that tracer is in active snapshot state
-	if(!test_bit(SNAPSHOT, &dev->sd_state) || !test_bit(ACTIVE, &dev->sd_state)){
+	if(!test_bit(ACTIVE, &dev->sd_state)){
 		ret = -EINVAL;
 		LOG_ERROR(ret, "device specified is not in active snapshot mode");
 		goto error;
 	}
+	if(!test_bit(SNAPSHOT, &dev->sd_state))
+		return 0;
 
 	ret = tracer_active_snap_to_inc(dev);
 	if(ret) goto error;
@@ -6129,7 +6132,8 @@ static int ioctl_elastio_snap_info(struct elastio_snap_info *info){
 	return 0;
 
 error:
-	LOG_ERROR(ret, "error during reconfigure ioctl handler");
+	if(ret != -ENOENT)
+		LOG_ERROR(ret, "error during elastio-snap info ioctl handler");
 	return ret;
 }
 

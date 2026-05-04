@@ -11,7 +11,7 @@ further upstream kernel API changes — leaving users on the latest distribution
 (Ubuntu 25.04/25.10) unable to back up their machines. This project patches the
 module source and repackages the installer so it works again.
 
-The version is bumped only slightly (`3.2.0-5054` over the official `3.2.0-5053`),
+The version is bumped only slightly (`3.2.0-5055` over the official `3.2.0-5053`),
 so when Synology eventually releases an official update with proper kernel
 support, ABB will automatically install their version over this one.
 
@@ -135,6 +135,17 @@ changes from **6.15 through 7.0**:
 - `freeze_super()` / `thaw_super()` gained a third `owner` argument —
   `freeze_super_3.c` feature test added, `main.c` updated with new call path
 
+### Kernel log noise reduction
+- **Spurious ioctl errors suppressed** — the agent sends `IOCTL_TRANSITION_INC`
+  on devices already in incremental mode during normal backup completion; the
+  driver now returns success (idempotent) instead of `-EINVAL`, eliminating the
+  repeated `device specified is not in active snapshot mode` / `error during
+  transition to incremental ioctl handler` messages.  Similarly, `IOCTL_DESTROY`
+  and the elastio-snap info ioctl no longer log errors when the device is already
+  gone (`-ENOENT`) — these are normal cleanup calls on agent restart. A copy-paste
+  bug in the elastio-snap info error message (which claimed to be the reconfigure
+  handler) is also fixed.
+
 ### Installer / packaging fixes
 - **Debian 12+ DKMS autoinstall** — the original `postinst` stripped
   `AUTOINSTALL="yes"` from `dkms.conf` on Debian 12+, causing DKMS to refuse
@@ -151,7 +162,7 @@ changes from **6.15 through 7.0**:
 build-tools/
   build.sh                       # Main build script
   patches/
-    variables.sh                 # Installer variable overrides (version 5054)
+    variables.sh                 # Installer variable overrides (version 5055)
     synosnap/                    # Patched kernel module sources
       configure-tests/
         feature-tests/           # Kernel feature detection tests
