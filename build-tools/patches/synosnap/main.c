@@ -6281,7 +6281,7 @@ static long ctrl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 		break;
 	default:
 		ret = -EINVAL;
-		LOG_ERROR(ret, "invalid ioctl called");
+		LOG_DEBUG("invalid ioctl called: %u", cmd);
 		break;
 	}
 
