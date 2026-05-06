@@ -6813,9 +6813,8 @@ static void post_umount_check(int dormant_ret, long umount_ret, unsigned int idx
 #endif
 #endif
 
-#ifdef USE_ARCH_MOUNT_FUNCS
 #ifdef USE_NEW_MOUNT_API
-// kernel >= 6.6
+// kernel >= 6.6 — new mount syscalls needed for both syscall-table and ftrace hooking paths
 static asmlinkage long (*orig_move_mount)(struct pt_regs *regs);
 static asmlinkage long (*orig_mount_setattr)(struct pt_regs *regs);
 static asmlinkage long (*orig_fsconfig)(struct pt_regs *regs);
@@ -6903,7 +6902,10 @@ struct mount {
 	struct hlist_head mnt_stuck_children;
 } __randomize_layout;
 
-#else
+#endif // USE_NEW_MOUNT_API
+
+#ifdef USE_ARCH_MOUNT_FUNCS
+#ifndef USE_NEW_MOUNT_API
 static asmlinkage long (*orig_mount)(struct pt_regs *regs);
 #endif //USE_NEW_MOUNT_API
 static asmlinkage long (*orig_umount)(struct pt_regs *regs);
