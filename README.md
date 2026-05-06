@@ -30,6 +30,12 @@ DKMS, just like the official installer.
 
 ### Arch Linux
 
+> **⚠ EARLY TESTING — DO NOT USE IN PRODUCTION**
+> The Arch Linux installer is experimental and has not been verified on real hardware.
+> It has only been tested for script correctness and archive integrity.
+> Use at your own risk and be prepared to reinstall your system.
+> Please report results in the [GitHub Issues](https://github.com/Peppershade/abb-linux-agent/issues).
+
 A separate installer is available for Arch Linux:
 
 **[Download install-arch.run](https://github.com/Peppershade/abb-linux-agent/releases/latest)**
