@@ -94,12 +94,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: synosnap-deb-arch
+          path: /tmp/synosnap-deb
 
       - name: Extract synosnap DEB (ar + tar, no dpkg)
         run: |
           mkdir -p /tmp/synosnap-extract
           WORKDIR=$(mktemp -d)
-          (cd "$WORKDIR" && ar x synosnap-*.deb)
+          (cd "$WORKDIR" && ar x /tmp/synosnap-deb/synosnap-*.deb)
           DATAFILE=$(find "$WORKDIR" -name 'data.tar.*' | head -1)
           tar xf "$DATAFILE" -C /tmp/synosnap-extract
           echo "Extracted DKMS source:"
