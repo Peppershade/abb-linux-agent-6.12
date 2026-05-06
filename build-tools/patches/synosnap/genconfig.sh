@@ -56,6 +56,15 @@ if [ ! -f "$SYSTEM_MAP_FILE" ] || [ $(cat "$SYSTEM_MAP_FILE" | wc -l) -lt 10 ]; 
 	SYSTEM_MAP_FILE="/usr/lib/debug/boot/System.map-${KERNEL_VERSION}"
 
 	if [ ! -f "$SYSTEM_MAP_FILE" ]; then
+		# Arch Linux stores System.map with the preset name, not the full version string
+		if [ -f "/boot/System.map-linux" ]; then
+			SYSTEM_MAP_FILE="/boot/System.map-linux"
+		elif [ -f "/boot/System.map" ]; then
+			SYSTEM_MAP_FILE="/boot/System.map"
+		fi
+	fi
+
+	if [ ! -f "$SYSTEM_MAP_FILE" ]; then
 		# Obtain the relevant System.map file from the
 		# dbg package if the package is being upgraded
 		if [ "$(uname -r)" != "$KERNEL_VERSION" ]; then

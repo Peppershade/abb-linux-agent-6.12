@@ -91,6 +91,10 @@ jobs:
           KVER=$(ls /usr/lib/modules/ | tail -1)
           echo "kver=$KVER" >> "$GITHUB_OUTPUT"
           echo "Target kernel: $KVER"
+          echo "--- System.map search ---"
+          find /boot /usr/lib/modules/"$KVER" -maxdepth 1 -name "System.map*" 2>/dev/null | sort || true
+          echo "--- /boot contents ---"
+          ls -la /boot/ 2>/dev/null || true
 
       - uses: actions/download-artifact@v4
         with:
