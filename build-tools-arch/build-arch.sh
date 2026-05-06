@@ -1,6 +1,6 @@
 #!/bin/bash
 # build-arch.sh — Build install-arch.run from the patched build/install.run
-#
+# See install-arch.sh for the Arch Linux installer that this script packages.
 # Usage:
 #   ./build-tools-arch/build-arch.sh [path/to/patched-install.run]
 #
