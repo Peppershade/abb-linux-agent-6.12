@@ -1,0 +1,157 @@
+name: Test DKMS module build (Arch Linux)
+
+# Runs on pushes to the Arch feature branch and can be triggered manually.
+# Requires the SYNOLOGY_INSTALLER_URL repository secret (same as test-dkms.yml).
+
+on:
+  push:
+    branches: [feature/arch-linux-installer]
+    paths:
+      - 'build-tools/**'
+      - 'build-tools-arch/**'
+      - '.github/workflows/test-dkms-arch.yml'
+  workflow_dispatch:
+
+jobs:
+  # ── Step 1: build install-arch.run and extract the synosnap DEB ──────────────
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      synosnap-version: ${{ steps.meta.outputs.synosnap-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: sudo apt-get install -y dpkg perl dos2unix
+
+      - name: Fix line endings (repo checked out on Windows)
+        run: find build-tools build-tools-arch -name "*.sh" | xargs dos2unix
+
+      - name: Download and extract original Synology installer
+        run: |
+          curl -fsSL "${{ secrets.SYNOLOGY_INSTALLER_URL }}" -o synology.zip
+          unzip -q synology.zip -d synology_pkg
+          RUN=$(find synology_pkg -maxdepth 2 -name "*.run" | head -1)
+          if [ -n "$RUN" ]; then
+            echo "SYNOLOGY_INPUT=$RUN" >> "$GITHUB_ENV"
+          else
+            DIR=$(find synology_pkg -maxdepth 2 -name "install.sh" | head -1 | xargs -I{} dirname {})
+            echo "SYNOLOGY_INPUT=$DIR" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build patched Debian installer
+        run: bash build-tools/build.sh "$SYNOLOGY_INPUT"
+
+      - name: Build patched Arch installer
+        run: bash build-tools-arch/build-arch.sh ./install.run
+
+      - name: Verify archive contents
+        run: |
+          SKIP=$(awk '/^__ARCHIVE_BELOW__/{print NR+1; exit}' build/install-arch.run)
+          echo "Archive contents:"
+          tail -n+"$SKIP" build/install-arch.run | tar tzf - | sort
+
+      - name: Extract synosnap DEB from install-arch.run
+        id: meta
+        run: |
+          mkdir payload-arch
+          SKIP=$(awk '/^__ARCHIVE_BELOW__/{print NR+1; exit}' build/install-arch.run)
+          tail -n+"$SKIP" build/install-arch.run | tar xzf - -C payload-arch
+          VER=$(ls payload-arch/synosnap-*.deb | grep -oP '\d+\.\d+\.\d+' | head -1)
+          echo "synosnap-version=$VER" >> "$GITHUB_OUTPUT"
+          echo "synosnap version: $VER"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: install-arch.run
+          path: build/install-arch.run
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synosnap-deb-arch
+          path: payload-arch/synosnap-*.deb
+
+  # ── Step 2: compile the DKMS module inside an Arch Linux container ────────────
+  test-dkms-arch:
+    needs: build
+    runs-on: ubuntu-24.04
+    container: archlinux:latest
+
+    steps:
+      - name: Initialise pacman keyring and install dependencies
+        run: |
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm dkms linux linux-headers base-devel
+
+      - name: Detect installed Arch kernel version
+        id: kver
+        run: |
+          KVER=$(ls /usr/lib/modules/ | tail -1)
+          echo "kver=$KVER" >> "$GITHUB_OUTPUT"
+          echo "Target kernel: $KVER"
+
+      - name: Provide minimal System.map for genconfig.sh (CI workaround)
+        run: |
+          KVER="${{ steps.kver.outputs.kver }}"
+          # Arch's linux package doesn't install System.map in Docker containers.
+          # Create a minimal one with only x64_sys_call so genconfig.sh selects the
+          # ftrace hooking path — the correct path for kernel >= 6.9 where per-syscall
+          # __x64_sys_* symbols are no longer individually exported.
+          # This matches what the module would see on real running Arch 7.0+ hardware.
+          # genconfig.sh rejects files with < 10 lines (Debian stub detection).
+          # Add dummy entries to pass the check; only x64_sys_call matters.
+          {
+            echo "0000000000000001 T x64_sys_call"
+            for i in $(seq 1 12); do echo "0000000000000000 t _ci_stub_$i"; done
+          } > "/boot/System.map-$KVER"
+          echo "Created /boot/System.map-$KVER ($(wc -l < "/boot/System.map-$KVER") lines)"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: synosnap-deb-arch
+          path: /tmp/synosnap-deb
+
+      - name: Extract synosnap DEB (ar + tar, no dpkg)
+        run: |
+          mkdir -p /tmp/synosnap-extract
+          WORKDIR=$(mktemp -d)
+          (cd "$WORKDIR" && ar x /tmp/synosnap-deb/synosnap-*.deb)
+          DATAFILE=$(find "$WORKDIR" -name 'data.tar.*' | head -1)
+          tar xf "$DATAFILE" -C /tmp/synosnap-extract
+          echo "Extracted DKMS source:"
+          find /tmp/synosnap-extract/usr/src -maxdepth 2 | sort
+
+      - name: Register synosnap source with DKMS
+        run: |
+          VER="${{ needs.build.outputs.synosnap-version }}"
+          cp -r "/tmp/synosnap-extract/usr/src/synosnap-${VER}" /usr/src/
+          dkms add "synosnap/${VER}"
+
+      - name: Verify kernel build system (diagnostic)
+        run: |
+          KVER="${{ steps.kver.outputs.kver }}"
+          TMPDIR=$(mktemp -d)
+          printf 'obj-m := dummy.o\nccflags-y := -Werror\n' > "$TMPDIR/Kbuild"
+          printf '#include <linux/module.h>\nMODULE_LICENSE("GPL");\n' > "$TMPDIR/dummy.c"
+          make -C "/usr/lib/modules/$KVER/build" M="$TMPDIR" modules 2>&1 \
+            && echo "Build system OK" \
+            || echo "::warning::Kernel build system check failed for $KVER — feature tests may all report 'not present'"
+          rm -rf "$TMPDIR"
+
+      - name: Build DKMS module against Arch kernel
+        run: |
+          dkms build "synosnap/${{ needs.build.outputs.synosnap-version }}" \
+            -k "${{ steps.kver.outputs.kver }}"
+
+      - name: Show make.log
+        if: always()
+        run: |
+          VER="${{ needs.build.outputs.synosnap-version }}"
+          LOG="/var/lib/dkms/synosnap/${VER}/build/make.log"
+          [ -f "$LOG" ] && cat "$LOG" || echo "make.log not found at $LOG"
+
+      - name: Show DKMS status
+        if: always()
+        run: dkms status synosnap

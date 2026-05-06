@@ -28,6 +28,32 @@ sudo bash install.run
 The installer sets up the agent and builds the `synosnap` kernel module via
 DKMS, just like the official installer.
 
+### Arch Linux
+
+> **⚠ EARLY TESTING — DO NOT USE IN PRODUCTION**
+> The Arch Linux installer is experimental and has not been verified on real hardware.
+> It has only been tested for script correctness and archive integrity.
+> Use at your own risk and be prepared to reinstall your system.
+> Please report results in the [GitHub Issues](https://github.com/Peppershade/abb-linux-agent/issues).
+
+A separate installer is available for Arch Linux:
+
+**[Download install-arch.run](https://github.com/Peppershade/abb-linux-agent/releases/latest)**
+
+```bash
+sudo bash install-arch.run
+```
+
+To uninstall:
+
+```bash
+sudo bash install-arch.run uninstall
+```
+
+> **Note:** `dkms`, `linux-headers`, and `base-devel` are installed automatically via `pacman`.
+> If you use a non-stock kernel (e.g. `linux-zen`, `linux-lts`), install the matching headers
+> first: `pacman -S linux-zen-headers`.
+
 ### Verified kernel versions
 
 | Kernel | Distribution | Status |

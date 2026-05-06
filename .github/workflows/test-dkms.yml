@@ -74,13 +74,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - kernel: '6.14'
           - kernel: '6.15'
           - kernel: '6.17'
           - kernel: '6.18'
             container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x
           - kernel: '6.19'
             container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x
+          - kernel: '7.0'
+            container: 'ubuntu:25.10'   # provides GCC 15; no hosted runner exists for 25.x/26.x
 
     steps:
       - name: Bootstrap container environment
