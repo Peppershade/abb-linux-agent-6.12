@@ -205,3 +205,61 @@ do_install() {
     echo " * Run 'abb-cli -h' for all commands."
     echo " * To uninstall: sudo bash install-arch.sh uninstall"
 }
+
+do_uninstall() {
+    [[ "$(id -u)" -eq 0 ]] || fail "Must run as root (use sudo)"
+
+    info "Stopping and disabling service..."
+    systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+    systemctl disable "$SERVICE_NAME" 2>/dev/null || true
+
+    info "Removing DKMS module..."
+    if dkms status | grep -q "synosnap"; then
+        dkms remove "synosnap/${VERSION_SYNOSNAP}" --all || true
+    fi
+    rm -rf "/usr/src/synosnap-${VERSION_SYNOSNAP}"
+
+    info "Rebuilding initramfs without synosnap..."
+    rm -f /etc/mkinitcpio.conf.d/synosnap.conf
+    mkinitcpio -P
+
+    if [[ -f "$MANIFEST" ]]; then
+        info "Removing installed files from manifest..."
+        while IFS= read -r path; do
+            if [[ -f "$path" || -L "$path" ]]; then
+                rm -f "$path"
+            elif [[ -d "$path" ]]; then
+                rmdir --ignore-fail-on-non-empty "$path" 2>/dev/null || true
+            fi
+        done < "$MANIFEST"
+        rm -f "$MANIFEST"
+    else
+        info "Manifest not found — removing known paths..."
+        rm -f /etc/modules-load.d/synosnap.conf
+        rm -f /lib/systemd/system-shutdown/synosnap.shutdown
+        rm -f /bin/sbdctl
+        rm -f /usr/lib/synosnap/libsynosnap.so.1
+        rm -f /usr/lib/synosnap/libsynosnap.so
+        rmdir --ignore-fail-on-non-empty /usr/lib/synosnap 2>/dev/null || true
+        rm -rf /opt/synosnap
+        rm -f /etc/initcpio/hooks/synosnap
+        rm -f /etc/initcpio/install/synosnap
+        rm -f /bin/abb-cli
+        rm -rf /opt/Synology
+        rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+        rm -f /lib/systemd/system-sleep/notify-abb.sh
+    fi
+
+    systemctl daemon-reload
+    ok "Uninstall complete."
+}
+
+# --- Entrypoint ---
+case "${1:-install}" in
+    install)   do_install ;;
+    uninstall) do_uninstall ;;
+    *)
+        echo "Usage: $0 [install|uninstall]"
+        exit 1
+        ;;
+esac
