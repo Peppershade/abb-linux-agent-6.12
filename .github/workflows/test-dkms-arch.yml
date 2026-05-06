@@ -91,10 +91,17 @@ jobs:
           KVER=$(ls /usr/lib/modules/ | tail -1)
           echo "kver=$KVER" >> "$GITHUB_OUTPUT"
           echo "Target kernel: $KVER"
-          echo "--- System.map search ---"
-          find /boot /usr/lib/modules/"$KVER" -maxdepth 1 -name "System.map*" 2>/dev/null | sort || true
-          echo "--- /boot contents ---"
-          ls -la /boot/ 2>/dev/null || true
+
+      - name: Provide minimal System.map for genconfig.sh (CI workaround)
+        run: |
+          KVER="${{ steps.kver.outputs.kver }}"
+          # Arch's linux package doesn't install System.map in Docker containers.
+          # Create a minimal one with only x64_sys_call so genconfig.sh selects the
+          # ftrace hooking path — the correct path for kernel >= 6.9 where per-syscall
+          # __x64_sys_* symbols are no longer individually exported.
+          # This matches what the module would see on real running Arch 7.0+ hardware.
+          echo "0000000000000001 T x64_sys_call" > "/boot/System.map-$KVER"
+          echo "Created /boot/System.map-$KVER with x64_sys_call stub"
 
       - uses: actions/download-artifact@v4
         with:
