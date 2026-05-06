@@ -9,6 +9,7 @@ on:
     paths:
       - 'build-tools/**'
       - 'build-tools-arch/**'
+      - '.github/workflows/test-dkms-arch.yml'
   workflow_dispatch:
 
 jobs:
