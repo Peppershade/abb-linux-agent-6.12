@@ -138,3 +138,70 @@ INSTALLHOOK
 
     ok "synosnap ${VERSION_SYNOSNAP} installed"
 }
+
+install_agent() {
+    local agent_root
+    agent_root=$(mktemp -d)
+    trap 'rm -rf "$agent_root"' RETURN
+
+    info "Extracting agent DEB..."
+    extract_deb "$AGENT_DEB" "$agent_root"
+
+    info "Installing agent binaries and libraries..."
+    cp -r "$agent_root/opt/Synology" /opt/
+    install -Dm755 "$agent_root/bin/abb-cli" /bin/abb-cli
+
+    info "Installing systemd service..."
+    install -Dm644 \
+        "$agent_root/etc/systemd/system/${SERVICE_NAME}.service" \
+        "/etc/systemd/system/${SERVICE_NAME}.service"
+
+    if [[ -f "$agent_root/lib/systemd/system-sleep/notify-abb.sh" ]]; then
+        install -Dm755 "$agent_root/lib/systemd/system-sleep/notify-abb.sh" \
+            "/lib/systemd/system-sleep/notify-abb.sh"
+    fi
+
+    systemctl daemon-reload
+    systemctl enable --now "$SERVICE_NAME"
+
+    ok "Agent ${VERSION_AGENT} installed and started"
+}
+
+write_manifest() {
+    mkdir -p /opt/synosnap
+    {
+        # Generated from installed paths — used by uninstall
+        find "/usr/src/synosnap-${VERSION_SYNOSNAP}" -depth
+        echo "/etc/modules-load.d/synosnap.conf"
+        echo "/lib/systemd/system-shutdown/synosnap.shutdown"
+        echo "/bin/sbdctl"
+        echo "/usr/lib/synosnap/libsynosnap.so.1"
+        echo "/usr/lib/synosnap/libsynosnap.so"
+        echo "/usr/lib/synosnap"
+        echo "/opt/synosnap/dla/reload"
+        echo "/opt/synosnap/dla"
+        echo "/opt/synosnap/openssl.conf"
+        echo "/etc/initcpio/hooks/synosnap"
+        echo "/etc/initcpio/install/synosnap"
+        echo "/etc/mkinitcpio.conf.d/synosnap.conf"
+        find /opt/Synology -depth
+        echo "/bin/abb-cli"
+        echo "/etc/systemd/system/${SERVICE_NAME}.service"
+        [[ -f /lib/systemd/system-sleep/notify-abb.sh ]] && \
+            echo "/lib/systemd/system-sleep/notify-abb.sh"
+    } > "$MANIFEST"
+    ok "Manifest written to $MANIFEST"
+}
+
+do_install() {
+    preflight
+    install_deps
+    install_synosnap
+    install_agent
+    write_manifest
+    echo ""
+    ok "Installation complete."
+    echo " * Run 'abb-cli -c' to connect to your Synology NAS."
+    echo " * Run 'abb-cli -h' for all commands."
+    echo " * To uninstall: sudo bash install-arch.sh uninstall"
+}
